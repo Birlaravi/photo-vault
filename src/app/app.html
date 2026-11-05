@@ -1,0 +1,217 @@
+<div class="app-shell">
+
+  <!-- Loading -->
+  @if (screen() === 'loading') {
+    <div class="center-screen">
+      <div class="spinner"></div>
+    </div>
+  }
+
+  <!-- First-time setup -->
+  @if (screen() === 'setup') {
+    <div class="center-screen">
+      <div class="card">
+        <div class="lock-icon">🔒</div>
+        <h1>Create Your Vault</h1>
+        <p class="subtitle">Choose a password to encrypt your photos. This stays only on this device.</p>
+
+        <input
+          type="password"
+          placeholder="Password (min 6 characters)"
+          [(ngModel)]="setupPassword"
+          (keyup.enter)="submitSetup()"
+        />
+        <input
+          type="password"
+          placeholder="Confirm password"
+          [(ngModel)]="setupPasswordConfirm"
+          (keyup.enter)="submitSetup()"
+        />
+
+        @if (setupError) {
+          <p class="error">{{ setupError }}</p>
+        }
+
+        <button class="primary" (click)="submitSetup()">Create Vault</button>
+
+        <p class="hint">
+          You'll be shown a one-time recovery code next — save it somewhere safe.
+          It's the only way back in if you forget this password.
+        </p>
+      </div>
+    </div>
+  }
+
+  <!-- Show recovery code once -->
+  @if (screen() === 'setup-recovery-shown') {
+    <div class="center-screen">
+      <div class="card">
+        <div class="lock-icon">🔑</div>
+        <h1>Your Recovery Code</h1>
+        <p class="subtitle">
+          Write this down or save it in a password manager. It will never be shown again,
+          and it's the only way to recover your vault if you forget your password.
+        </p>
+
+        <div class="recovery-code">{{ recoveryCode }}</div>
+
+        <label class="checkbox-row">
+          <input type="checkbox" [(ngModel)]="recoveryCodeSaved" />
+          I've saved this recovery code somewhere safe
+        </label>
+
+        <button class="primary" [disabled]="!recoveryCodeSaved" (click)="confirmRecoverySaved()">
+          Continue to Vault
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Lock screen -->
+  @if (screen() === 'lock') {
+    <div class="center-screen">
+      <div class="card">
+        <div class="lock-icon">🔒</div>
+        <h1>Vault Locked</h1>
+
+        <input
+          type="password"
+          placeholder="Enter password"
+          [(ngModel)]="lockPassword"
+          (keyup.enter)="submitUnlock()"
+          autofocus
+        />
+
+        @if (lockError) {
+          <p class="error">{{ lockError }}</p>
+        }
+
+        <button class="primary" [disabled]="unlocking" (click)="submitUnlock()">
+          {{ unlocking ? 'Unlocking…' : 'Unlock' }}
+        </button>
+
+        <button class="link-button" (click)="goToRecovery()">Forgot password? Use recovery code</button>
+      </div>
+    </div>
+  }
+
+  <!-- Recovery code entry -->
+  @if (screen() === 'recovery-entry') {
+    <div class="center-screen">
+      <div class="card">
+        <div class="lock-icon">🔑</div>
+        <h1>Enter Recovery Code</h1>
+        <p class="subtitle">Enter the recovery code you saved when you first set up this vault.</p>
+
+        <input
+          type="text"
+          placeholder="XXXX-XXXX-XXXX-XXXX"
+          [(ngModel)]="recoveryInput"
+          (keyup.enter)="submitRecoveryCode()"
+          style="text-transform: uppercase"
+        />
+
+        @if (recoveryError) {
+          <p class="error">{{ recoveryError }}</p>
+        }
+
+        <button class="primary" (click)="submitRecoveryCode()">Verify Code</button>
+        <button class="link-button" (click)="cancelRecovery()">Back</button>
+      </div>
+    </div>
+  }
+
+  <!-- Set new password after recovery -->
+  @if (screen() === 'recovery-reset') {
+    <div class="center-screen">
+      <div class="card">
+        <div class="lock-icon">✅</div>
+        <h1>Set a New Password</h1>
+        <p class="subtitle">Your recovery code worked. Choose a new password — your photos are safe.</p>
+
+        <input
+          type="password"
+          placeholder="New password (min 6 characters)"
+          [(ngModel)]="newPasswordAfterRecovery"
+          (keyup.enter)="submitNewPasswordAfterRecovery()"
+        />
+        <input
+          type="password"
+          placeholder="Confirm new password"
+          [(ngModel)]="newPasswordAfterRecoveryConfirm"
+          (keyup.enter)="submitNewPasswordAfterRecovery()"
+        />
+
+        @if (recoveryError) {
+          <p class="error">{{ recoveryError }}</p>
+        }
+
+        <button class="primary" (click)="submitNewPasswordAfterRecovery()">Save New Password</button>
+      </div>
+    </div>
+  }
+
+  <!-- Gallery -->
+  @if (screen() === 'gallery') {
+    <div class="gallery-screen">
+      <header class="gallery-header">
+        <h1>My Vault</h1>
+        <div class="header-actions">
+          <button class="icon-button" (click)="triggerImport()" title="Add photos">＋ Add</button>
+          <button class="icon-button" (click)="lockVault()" title="Lock vault">🔒 Lock</button>
+        </div>
+      </header>
+
+      <input
+        #fileInput
+        type="file"
+        accept="image/*"
+        multiple
+        style="display: none"
+        (change)="onFilesSelected($event)"
+      />
+
+      @if (importing) {
+        <p class="status-text">Encrypting and saving…</p>
+      }
+      @if (importError) {
+        <p class="error">{{ importError }}</p>
+      }
+
+      @if (vault.photos().length === 0 && !importing) {
+        <div class="empty-state">
+          <div class="lock-icon">🖼️</div>
+          <p>No photos yet.</p>
+          <button class="primary" (click)="triggerImport()">Add your first photo</button>
+        </div>
+      } @else {
+        <div class="photo-grid">
+          @for (photo of vault.photos(); track photo.id) {
+            <button class="thumb" (click)="openViewer(photo)">
+              @if (thumbUrls.has(photo.id)) {
+                <img [src]="thumbUrls.get(photo.id)" [alt]="photo.fileName" />
+              } @else {
+                <div class="thumb-placeholder"></div>
+              }
+            </button>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Full-screen viewer -->
+  @if (viewerPhotoId && viewerUrl) {
+    <div class="viewer-overlay" (click)="closeViewer()">
+      <div class="viewer-content" (click)="$event.stopPropagation()">
+        <img [src]="viewerUrl" alt="Full size photo" />
+        <div class="viewer-actions">
+          <button (click)="exportCurrentPhoto()">⬇ Export</button>
+          <button (click)="deleteCurrentPhoto()" class="danger">🗑 Delete</button>
+          <button (click)="closeViewer()">✕ Close</button>
+        </div>
+      </div>
+    </div>
+  }
+
+</div>

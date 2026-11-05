@@ -1,0 +1,5 @@
+{
+	"appId": "com.birla.photovault",
+	"appName": "Photo Vault",
+	"webDir": "dist/photo-vault/browser"
+}
